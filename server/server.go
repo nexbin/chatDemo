@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 )
 
 type server struct {
@@ -51,7 +52,7 @@ func (s *server) StartServer() error {
 // handleConn
 func (s *server) handleConn(conn net.Conn) {
 	// register
-	newUser := &User{Conn: conn, Ip: conn.RemoteAddr().String()}
+	newUser := &User{Conn: conn, Ip: conn.RemoteAddr().String(), UserName: conn.RemoteAddr().String()}
 	s.Hub.Register <- newUser
 	s.readClientMessage(newUser)
 }
@@ -67,11 +68,26 @@ func (s *server) readClientMessage(user *User) {
 			s.Hub.Unregister <- user
 			break
 		}
-		data := formatMessage(user.Ip, string(buf[:n])+"\n")
-		s.Hub.Broadcast <- data
+		// 查询当前在线人数
+		msg := string(buf[:n])
+		if msg == "who" {
+			user.Conn.Write([]byte(s.CheckAllOnlineUser()))
+		} else {
+			msg = formatMessage(user.Ip, msg+"\n")
+			s.Hub.Broadcast <- msg
+		}
+
 	}
 }
 
 func formatMessage(ip, msg string) string {
 	return fmt.Sprintf("[%s]: %s", ip, msg)
+}
+
+func (s *server) CheckAllOnlineUser() string {
+	sb := strings.Builder{}
+	for u, _ := range s.Hub.UserMap {
+		sb.WriteString("[" + u.Ip + "]: " + u.UserName + "在线\n")
+	}
+	return sb.String()
 }

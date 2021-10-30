@@ -5,6 +5,7 @@ import (
 )
 
 type User struct {
-	Conn net.Conn
-	Ip   string
+	Conn     net.Conn
+	UserName string
+	Ip       string
 }
